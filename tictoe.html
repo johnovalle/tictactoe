@@ -21,7 +21,7 @@
 <script>
 var canvas, ctx;
 var data;
-var player;
+var player, ai;
 window.onload = function main(){
 	canvas = document.createElement('canvas');
 	canvas.width = canvas.height = 3*120 +20;
@@ -45,6 +45,9 @@ function init() {
 		}
 	}
 	player = Tile.NOUGHT;
+	ai = new AIPlayer();
+	ai.setSeed(player === Tile.NOUGHT ? Tile.CROSS : Tile.NOUGHT);
+	//console.log(ai.getSeed());
 
 }
 
@@ -168,11 +171,20 @@ function Tile (x, y){
 
 function AIPlayer(data){
 	var data = data, seed, oppSeed;
-	this.setSeed =  function() {}
-	this.getSeed = function() {}
-	this.move =  function() {}
+	this.setSeed =  function(_seed) {
+		seed = _seed;
+		oppSeed = _seed === Tile.NOUGHT ? Tile.CROSS : Tile.NOUGHT;
+	}
+	this.getSeed = function() {
+		return seed;
+	}
+	this.move =  function() {
+		return minimax(2, seed)[1];
+	}
 
-	function minimax(depth, player){}
+	function minimax(depth, player){
+		return [best, idx];
+	}
 	function evaluate() {}
 	function evaluateLine(){}
 	var winningPatterns = (function(){
