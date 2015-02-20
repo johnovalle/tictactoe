@@ -94,7 +94,7 @@ function Tile (x, y){
 	if (tile == null) {
 		var _c = document.createElement('canvas');
 		_c.width = _c.height = 100;
-		_ctx = _c.getContext('2d');
+		var _ctx = _c.getContext('2d');
 
 		_ctx.fillStyle = 'skyblue';
 		_ctx.lineWidth = 4;
@@ -135,6 +135,9 @@ function Tile (x, y){
 
 	this.hasData = function() {
 		return tile !== Tile.BLANK;
+	}
+	this.set = function(next){
+		tile = next;
 	}
 
 	this.flip = function (next) {
@@ -179,12 +182,49 @@ function AIPlayer(data){
 		return seed;
 	}
 	this.move =  function() {
+
 		return minimax(2, seed)[1];
 	}
 
 	function minimax(depth, player){
-		return [best, idx];
+		var nextMoves = getValidMoves();
+
+		var best = (player === seed) ? -1e100 : 1e100;
+			current,
+			bestidx = -1;
+
+		if (nextMoves.length === 0 || depth === 0){
+			best = this.evaluate();
+
+		} else {
+			for (var i = nextMoves.length; i--;){
+				var m = nextMoves[i];
+				data[m].set(player);
+
+				if (player === seed) {
+					current = minimax(depth-1, oppSeed)[1];
+					if (current > best){
+						best = current;
+						bestidx = m;
+					}
+
+				} else{
+					current = minimax(depth-1, seed)[1]
+					if(current < best){
+						best = current;
+						bestidx = m;
+					}
+
+				}
+				data[m].set(Tile.BLANK);
+			}
+		}
+		return [best, bestidx];
 	}
+	function getValidMoves(){
+
+	}
+
 	function evaluate() {}
 	function evaluateLine(){}
 	var winningPatterns = (function(){
