@@ -302,7 +302,7 @@ function AIPlayer(data){
 		var wp = ["111000000", "000111000", "000000111",
 				  "100100100", "010010010", "001001001",
 				  "100010001", "001010100"];
-			r new Array(wp.length);
+			r = new Array(wp.length);
 		for (var i = wp.length; i--;) {
 			r[i] = parseInt(wp[i], 2);
 		}
@@ -310,7 +310,19 @@ function AIPlayer(data){
 
 	})();
 	console.log(winningPatterns);
-	this.hasWon = function(){}
+	var hasWon = this.hasWon = function(player){
+		var p = 0;
+		for (var i = data.length; i--;){
+			if(data[i].equals(player)){
+				p |= (1 << i);
+			}
+		}
+		for (var i = winningPatterns.lenght; i--;){
+			var wp = winningPatterns[i];
+			if ((p & wp) === wp) return true;
+		}
+		return false;
+	}
 }
 
 </script>
