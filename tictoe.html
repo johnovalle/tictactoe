@@ -22,7 +22,8 @@
 var canvas, ctx;
 var data;
 var player, ai;
-window.onload = function main(){
+var isPlayer, aiMoved;
+window.onload = function main() {
 	canvas = document.createElement('canvas');
 	canvas.width = canvas.height = 3*120 +20;
 	ctx = canvas.getContext('2d');
@@ -36,7 +37,7 @@ window.onload = function main(){
 }
 
 function init() {
-	if (data == null){
+	if (data == null) {
 		data = [];
 		for (var i = 0; i< 9; i++) {
 			var x = (i % 3)*120 +20;
@@ -45,9 +46,13 @@ function init() {
 		}
 	}
 	player = Tile.NOUGHT;
-	ai = new AIPlayer();
+
+	isPlayer = player === Tile.NOUGHT;
+	aiMoved = false;
+
+	ai = new AIPlayer(data);
 	ai.setSeed(player === Tile.NOUGHT ? Tile.CROSS : Tile.NOUGHT);
-	//console.log(ai.getSeed());
+	console.log(ai.move());
 
 }
 
@@ -58,34 +63,55 @@ function tick() {
 	render();
 }
 
-function update(){
-	for (var i = data.length; i--;){
+function update() {
+	var activeAnim = false;
+
+	for (var i = data.length; i--;) {
 		data[i].update();
+		activeAnim = activeAnim || data[i].active();
 	}
+	if(!activeAnim) {
+		if (!aiMoved && !isPlayer) {
+			var m = ai.move();
+			if (m === -1) {
+				console.log('draw');
+			}else{
+				data[m].flip(ai.getSeed());
+			}
+			isPlayer = true;
+		}
+		aiMoved = true;
+	} else {
+		aiMoved = false;
+	}
+
+
 }
-function render(){
+function render() {
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
-	for (var i = data.length; i--;){
+	for (var i = data.length; i--;) {
 		data[i].draw(ctx);
 	}
 }
 
-function mouseDown(evt){
+function mouseDown(evt) {
+	if (!isPlayer) return;
 	var el = evt.target;
 	var px = evt.clientX - el.offsetLeft;
 	var py = evt.clientY - el.offsetTop;
  
-	if ( px % 120 >= 20 && py % 120 >= 20){
+	if ( px % 120 >= 20 && py % 120 >= 20) {
 		var idx = Math.floor(px/120);
 		idx += Math.floor(py/120) *3;
-		if (data[idx].hasData()){
+		if (data[idx].hasData()) {
 			return;
 		}
 		data[idx].flip(player);
-		player = player === Tile.NOUGHT ? Tile.CROSS : Tile.NOUGHT;
+		isPlayer = false;
+		//player = player === Tile.NOUGHT ? Tile.CROSS : Tile.NOUGHT;
 	}
 }
-function Tile (x, y){
+function Tile (x, y) {
 
 	var x = x, y =y;
 	var tile = Tile.BLANK;
@@ -132,20 +158,23 @@ function Tile (x, y){
 
 
 	}
-	this.equals = function(_tile){
+	this.active = function() {
+		return anim > 0;
+	}
+	this.equals = function(_tile) {
 		return tile === _tile;
 	}
 
 	this.hasData = function() {
 		return tile !== Tile.BLANK;
 	}
-	this.set = function(next){
+	this.set = function(next) {
 		tile = next;
 	}
 
 	this.flip = function (next) {
 		tile = next;
-		anim = 1
+		anim = 1;
 	}
 	this.update = function() {
 		if (anim > 0) {
@@ -153,10 +182,10 @@ function Tile (x, y){
 		}
 
 	}
-	this.draw = function(ctx){
+	this.draw = function(ctx) {
 		if (anim <= 0) {
 			ctx.drawImage(tile, x, y);
-			return
+			return;
 		}
 		var res = 2;
 		var t = anim > 0.5 ? Tile.BLANK : tile;
@@ -175,7 +204,7 @@ function Tile (x, y){
 	}
 }
 
-function AIPlayer(data){
+function AIPlayer(data) {
 	var data = data, seed, oppSeed;
 	this.setSeed =  function(_seed) {
 		seed = _seed;
@@ -189,31 +218,31 @@ function AIPlayer(data){
 		return minimax(2, seed)[1];
 	}
 
-	function minimax(depth, player){
+	function minimax(depth, player) {
 		var nextMoves = getValidMoves();
 
-		var best = (player === seed) ? -1e100 : 1e100;
+		var best = (player === seed) ? -1e100 : 1e100,
 			current,
 			bestidx = -1;
 
-		if (nextMoves.length === 0 || depth === 0){
-			best = this.evaluate();
+		if (nextMoves.length === 0 || depth === 0) {
+			best = evaluate();
 
 		} else {
-			for (var i = nextMoves.length; i--;){
+			for (var i = nextMoves.length; i--;) {
 				var m = nextMoves[i];
 				data[m].set(player);
 
 				if (player === seed) {
-					current = minimax(depth-1, oppSeed)[1];
-					if (current > best){
+					current = minimax(depth-1, oppSeed)[0];
+					if (current > best) {
 						best = current;
 						bestidx = m;
 					}
 
 				} else{
-					current = minimax(depth-1, seed)[1]
-					if(current < best){
+					current = minimax(depth-1, seed)[0]
+					if(current < best) {
 						best = current;
 						bestidx = m;
 					}
@@ -224,12 +253,12 @@ function AIPlayer(data){
 		}
 		return [best, bestidx];
 	}
-	function getValidMoves(){
+	function getValidMoves() {
 		var nm = [];
-		if (hasWon(seed) || hasWon(oppSeed)){
+		if (hasWon(seed) || hasWon(oppSeed)) {
 			return nm;
 		}
-		for (var i = data.lenght; i--;){
+		for (var i = data.length; i--;) {
 			if(!data[i].hasData()) {
 				nm.push(i);
 			}
@@ -249,7 +278,7 @@ function AIPlayer(data){
 		s += evaluateLine(2, 4, 6);
 		return s;
 	}
-	function evaluateLine(idx1, idx2, idx3){
+	function evaluateLine(idx1, idx2, idx3) {
 		var s = 0;
 		if (data[idx1].equals(seed)) {
 			s = 1;
@@ -258,18 +287,18 @@ function AIPlayer(data){
 		}
 
 		if (data[idx2].equals(seed)) {
-			if (s === 1){
+			if (s === 1) {
 				s = 10;
-			} else if (s === -1){
+			} else if (s === -1) {
 				return 0;
 			} else {
 				s = 1;
 			}
 
 		} else if (data[idx2].equals(oppSeed)) {
-			if (s === -1){
+			if (s === -1) {
 				s = -10;
-			} else if (s === 1){
+			} else if (s === 1) {
 				return 0;
 			} else {
 				s = -1;
@@ -278,7 +307,7 @@ function AIPlayer(data){
 		}
 
 		if (data[idx3].equals(seed)) {
-			if (s > 0){
+			if (s > 0) {
 				s *= 10;
 			} else if (s < 0) {
 				return 0;
@@ -287,7 +316,7 @@ function AIPlayer(data){
 			}
 
 		} else if (data[idx3].equals(oppSeed)) {
-			if (s < 0){
+			if (s < 0) {
 				s *= 10;
 			} else if (s > 0) {
 				return 0;
@@ -298,10 +327,10 @@ function AIPlayer(data){
 		}
 		return s;
 	}
-	var winningPatterns = (function(){
+	var winningPatterns = (function() {
 		var wp = ["111000000", "000111000", "000000111",
 				  "100100100", "010010010", "001001001",
-				  "100010001", "001010100"];
+				  "100010001", "001010100"],
 			r = new Array(wp.length);
 		for (var i = wp.length; i--;) {
 			r[i] = parseInt(wp[i], 2);
@@ -309,15 +338,15 @@ function AIPlayer(data){
 		return r;
 
 	})();
-	console.log(winningPatterns);
-	var hasWon = this.hasWon = function(player){
+	//console.log(winningPatterns);
+	var hasWon = this.hasWon = function(player) {
 		var p = 0;
-		for (var i = data.length; i--;){
-			if(data[i].equals(player)){
+		for (var i = data.length; i--;) {
+			if(data[i].equals(player)) {
 				p |= (1 << i);
 			}
 		}
-		for (var i = winningPatterns.lenght; i--;){
+		for (var i = winningPatterns.length; i--;) {
 			var wp = winningPatterns[i];
 			if ((p & wp) === wp) return true;
 		}
